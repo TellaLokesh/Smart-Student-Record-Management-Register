@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Smart Student Analytics Dashboard</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+
+body{
+margin:0;
+font-family:Segoe UI;
+background:linear-gradient(135deg,#141e30,#243b55);
+color:white;
+}
+
+/* HEADER */
+
+header{
+text-align:center;
+padding:20px;
+font-size:32px;
+font-weight:bold;
+}
+
+/* DASHBOARD CARDS */
+
+.cards{
+display:flex;
+justify-content:center;
+gap:20px;
+flex-wrap:wrap;
+}
+
+.card{
+background:rgba(255,255,255,0.1);
+padding:20px;
+border-radius:12px;
+width:180px;
+text-align:center;
+backdrop-filter:blur(10px);
+}
+
+/* MAIN CONTAINER */
+
+.container{
+width:950px;
+margin:30px auto;
+background:rgba(255,255,255,0.1);
+padding:30px;
+border-radius:12px;
+}
+
+/* INPUTS */
+
+input{
+padding:10px;
+margin:6px;
+width:160px;
+border:none;
+border-radius:6px;
+}
+
+/* BUTTONS */
+
+button{
+padding:10px 15px;
+margin:6px;
+border:none;
+border-radius:6px;
+background:#00c6ff;
+cursor:pointer;
+}
+
+button:hover{
+background:#0072ff;
+}
+
+/* TABLE */
+
+table{
+width:100%;
+margin-top:20px;
+border-collapse:collapse;
+}
+
+th{
+background:#0072ff;
+}
+
+table,th,td{
+border:1px solid rgba(255,255,255,0.2);
+}
+
+th,td{
+padding:10px;
+text-align:center;
+}
+
+/* LEADERBOARD */
+
+.leaderboard{
+margin-top:20px;
+padding:15px;
+background:rgba(0,0,0,0.3);
+border-radius:10px;
+}
+
+/* MODAL */
+
+.modal{
+display:none;
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.6);
+}
+
+.modal-content{
+background:white;
+color:black;
+padding:20px;
+width:300px;
+margin:10% auto;
+border-radius:10px;
+text-align:center;
+}
+
+/* TOAST */
+
+.toast{
+position:fixed;
+bottom:20px;
+right:20px;
+background:#00c6ff;
+padding:15px;
+border-radius:8px;
+display:none;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+🚀 Smart Student Student Record Management System
+</header>
+
+<div class="cards">
+
+<div class="card">
+<h3>Total Students</h3>
+<p id="total">0</p>
+</div>
+
+<div class="card">
+<h3>Average Score</h3>
+<p id="avg">0</p>
+</div>
+
+<div class="card">
+<h3>Highest Avg</h3>
+<p id="high">0</p>
+</div>
+
+<div class="card">
+<h3>Lowest Avg</h3>
+<p id="low">0</p>
+</div>
+
+</div>
+
+<div class="container">
+
+<input id="id" placeholder="Student ID">
+<input id="name" placeholder="Student Name">
+
+<br>
+
+<input id="fwd" placeholder="FWD">
+<input id="dsa" placeholder="DSA">
+<input id="glb" placeholder="GLB">
+<input id="lse" placeholder="LSE">
+<input id="mai" placeholder="MAI">
+
+<br>
+
+<button onclick="addStudent()">Add Student</button>
+<button onclick="exportPDF()">Export PDF</button>
+<button onclick="clearStudents()">Clear</button>
+
+<br>
+
+<input id="search" placeholder="Search Student..." onkeyup="searchStudent()">
+
+<table id="table">
+
+<tr>
+<th>ID</th>
+<th>Name</th>
+<th>FWD</th>
+<th>DSA</th>
+<th>GLB</th>
+<th>LSE</th>
+<th>MAI</th>
+<th>Average</th>
+<th>Rank</th>
+<th>Action</th>
+</tr>
+
+</table>
+
+<div class="leaderboard">
+
+<h3>🏆 Leaderboard</h3>
+
+<ul id="leaders"></ul>
+
+</div>
+
+</div>
+
+<!-- PROFILE MODAL -->
+
+<div class="modal" id="profileModal">
+
+<div class="modal-content">
+
+<h3>Student Profile</h3>
+
+<p id="profileInfo"></p>
+
+<button onclick="closeModal()">Close</button>
+
+</div>
+
+</div>
+
+<div class="toast" id="toast">Student Added</div>
+
+<script>
+
+let students=[];
+
+/* ADD STUDENT */
+
+function addStudent(){
+
+let id=document.getElementById("id").value;
+let name=document.getElementById("name").value;
+
+let fwd=parseInt(document.getElementById("fwd").value);
+let dsa=parseInt(document.getElementById("dsa").value);
+let glb=parseInt(document.getElementById("glb").value);
+let lse=parseInt(document.getElementById("lse").value);
+let mai=parseInt(document.getElementById("mai").value);
+
+if(!id||!name)return alert("Fill all fields");
+
+let avg=((fwd+dsa+glb+lse+mai)/5).toFixed(1);
+
+students.push({id,name,fwd,dsa,glb,lse,mai,avg});
+
+displayStudents();
+updateStats();
+updateLeaderboard();
+
+showToast("Student Added");
+
+}
+
+/* DISPLAY TABLE */
+
+function displayStudents(){
+
+let table=document.getElementById("table");
+
+table.innerHTML=`<tr>
+<th>ID</th>
+<th>Name</th>
+<th>FWD</th>
+<th>DSA</th>
+<th>GLB</th>
+<th>LSE</th>
+<th>MAI</th>
+<th>Average</th>
+<th>Rank</th>
+<th>Action</th>
+</tr>`;
+
+let sorted=[...students].sort((a,b)=>b.avg-a.avg);
+
+students.forEach((s,i)=>{
+
+let rank=sorted.findIndex(st=>st.id==s.id)+1;
+
+table.innerHTML+=`
+<tr>
+<td>${s.id}</td>
+<td>${s.name}</td>
+<td>${s.fwd}</td>
+<td>${s.dsa}</td>
+<td>${s.glb}</td>
+<td>${s.lse}</td>
+<td>${s.mai}</td>
+<td>${s.avg}</td>
+<td>${rank}</td>
+<td>
+<button onclick="viewProfile(${i})">Profile</button>
+<button onclick="deleteStudent(${i})">Delete</button>
+</td>
+</tr>
+`;
+
+});
+
+}
+
+/* DELETE */
+
+function deleteStudent(i){
+
+students.splice(i,1);
+
+displayStudents();
+updateStats();
+updateLeaderboard();
+
+}
+
+/* SEARCH */
+
+function searchStudent(){
+
+let input=document.getElementById("search").value.toLowerCase();
+
+let rows=document.querySelectorAll("#table tr");
+
+for(let i=1;i<rows.length;i++){
+
+let name=rows[i].cells[1].innerText.toLowerCase();
+
+rows[i].style.display=name.includes(input)?"":"none";
+
+}
+
+}
+
+/* STATS */
+
+function updateStats(){
+
+document.getElementById("total").innerText=students.length;
+
+if(students.length==0)return;
+
+let averages=students.map(s=>parseFloat(s.avg));
+
+let sum=averages.reduce((a,b)=>a+b,0);
+
+document.getElementById("avg").innerText=(sum/averages.length).toFixed(1);
+document.getElementById("high").innerText=Math.max(...averages);
+document.getElementById("low").innerText=Math.min(...averages);
+
+}
+
+/* LEADERBOARD */
+
+function updateLeaderboard(){
+
+let list=document.getElementById("leaders");
+
+list.innerHTML="";
+
+let sorted=[...students].sort((a,b)=>b.avg-a.avg).slice(0,5);
+
+sorted.forEach((s,i)=>{
+
+let medal=["🥇","🥈","🥉"][i]||"";
+
+list.innerHTML+=`<li>${medal} ${s.name} - Avg ${s.avg}</li>`;
+
+});
+
+}
+
+/* PROFILE MODAL */
+
+function viewProfile(i){
+
+let s=students[i];
+
+document.getElementById("profileInfo").innerText=
+
+`ID: ${s.id}
+Name: ${s.name}
+
+FWD: ${s.fwd}
+DSA: ${s.dsa}
+GLB: ${s.glb}
+LSE: ${s.lse}
+MAI: ${s.mai}
+
+Average: ${s.avg}`;
+
+document.getElementById("profileModal").style.display="block";
+
+}
+
+function closeModal(){
+
+document.getElementById("profileModal").style.display="none";
+
+}
+
+/* PDF EXPORT */
+
+function exportPDF(){
+
+const { jsPDF } = window.jspdf;
+
+let doc=new jsPDF();
+
+doc.setFontSize(18);
+doc.text("Student Academic Performance Report",20,20);
+
+let y=40;
+
+students.forEach(s=>{
+
+doc.setFontSize(11);
+
+doc.text(
+`${s.id} | ${s.name} | FWD:${s.fwd} | DSA:${s.dsa} | GLB:${s.glb} | LSE:${s.lse} | MAI:${s.mai} | AVG:${s.avg}`,
+20,y
+);
+
+y+=10;
+
+});
+
+doc.save("Student_Report.pdf");
+
+}
+
+/* TOAST */
+
+function showToast(msg){
+
+let toast=document.getElementById("toast");
+
+toast.innerText=msg;
+
+toast.style.display="block";
+
+setTimeout(()=>{
+
+toast.style.display="none";
+
+},2000);
+
+}
+
+/* CLEAR */
+
+function clearStudents(){
+
+students=[];
+displayStudents();
+updateStats();
+updateLeaderboard();
+
+}
+
+</script>
+
+</body>
+</html>
